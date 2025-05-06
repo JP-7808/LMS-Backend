@@ -13,4 +13,4 @@ const adminSchema = new mongoose.Schema({
   }
 });
 
-export default User.discriminator('Admin', adminSchema);
+export default User.discriminator('admin', adminSchema);

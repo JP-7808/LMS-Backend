@@ -48,4 +48,4 @@ const instructorSchema = new mongoose.Schema({
   }
 });
 
-export default User.discriminator('Instructor', instructorSchema);
+export default User.discriminator('instructor', instructorSchema);

@@ -1,3 +1,4 @@
+// models/Student.js
 import mongoose from 'mongoose';
 import User from './User.js';
 
@@ -62,4 +63,4 @@ const studentSchema = new mongoose.Schema({
   }
 });
 
-export default User.discriminator('Student', studentSchema);
+export default User.discriminator('student', studentSchema); // Changed 'Student' to 'student'
