@@ -51,12 +51,20 @@ const ticketSchema = new mongoose.Schema({
   resolvedAt: {
     type: Date
   },
-  attachments: [{
-    url: String,
-    name: String,
-    type: String,
-    size: Number
-  }],
+  // attachments: [{
+  //   url: String,
+  //   name: String,
+  //   type: String,
+  //   size: Number
+  // }],
+  attachments: [
+    {
+      url: { type: String, required: true },
+      name: String,
+      type: String,
+      size: Number
+    }
+  ],
   comments: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,

@@ -37,7 +37,7 @@ const instructorSchema = new mongoose.Schema({
   },
   approved: {
     type: Boolean,
-    default: false
+    default: true
   },
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
