@@ -50,17 +50,7 @@ const studentSchema = new mongoose.Schema({
       max: 100
     }
   }],
-  approved: {
-    type: Boolean,
-    default: false
-  },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin'
-  },
-  approvalDate: {
-    type: Date
-  }
+  
 });
 
 export default User.discriminator('student', studentSchema); // Changed 'Student' to 'student'
