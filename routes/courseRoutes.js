@@ -1,0 +1,31 @@
+import express from 'express';
+import {
+  getAllCourses,
+  getCourse,
+  getCourseContent,
+  searchCourses,
+  filterCourses,
+  getCourseReviews,
+  createCourseReview,
+  getPopularCourses,
+  getNewCourses,
+  getRecommendedCourses
+} from '../controllers/courseController.js';
+import { protect } from '../middleware/auth.js';
+const router = express.Router();
+
+// Public routes
+router.get('/', getAllCourses);
+router.get('/search', searchCourses);
+router.get('/filter', filterCourses);
+router.get('/popular', getPopularCourses);
+router.get('/new', getNewCourses);
+router.get('/recommended', getRecommendedCourses);
+router.get('/:id', getCourse);
+// Protected routes (require authentication)
+router.get('/:id/content', protect, getCourseContent); // Added protect middleware
+router.post('/:id/reviews', protect, createCourseReview);
+
+router.get('/:id/reviews', getCourseReviews);
+
+export default router;

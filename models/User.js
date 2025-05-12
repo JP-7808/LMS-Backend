@@ -110,4 +110,5 @@ userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
     return resetToken;
 };
 
-export default mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+export default User;

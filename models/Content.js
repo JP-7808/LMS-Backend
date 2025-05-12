@@ -26,9 +26,9 @@ const contentSchema = new mongoose.Schema({
   },
   duration: {
     type: Number, // in minutes
-    required: function() {
-      return this.type === 'video' || this.type === 'audio';
-    }
+    // required: function() {
+    //   return this.type === 'video' || this.type === 'audio';
+    // }
   },
   fileSize: {
     type: Number // in bytes

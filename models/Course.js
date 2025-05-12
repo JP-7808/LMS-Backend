@@ -18,7 +18,7 @@ const courseSchema = new mongoose.Schema({
   },
   instructor: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Instructor',
+    ref: 'User',
     required: true
   },
   category: {
@@ -57,7 +57,7 @@ const courseSchema = new mongoose.Schema({
   },
   thumbnail: {
     type: String,
-    required: [true, 'Please upload a course thumbnail']
+    // required: [true, 'Please upload a course thumbnail']
   },
   promotionalVideo: {
     type: String
@@ -124,7 +124,8 @@ const courseSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }], // Fixed to reference Review model
 }, {
   timestamps: true
 });

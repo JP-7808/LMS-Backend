@@ -1,0 +1,56 @@
+import express from 'express';
+import { protect, authorize, checkVerified } from '../middleware/auth.js';
+import { uploadThumbnail, uploadPromoVideo, uploadContent } from '../middleware/uploadMiddleware.js';
+import {
+  getInstructorProfile,
+  updateInstructorProfile,
+  getMyCourses,
+  createCourse,
+  updateCourse,
+  uploadCourseThumbnail,
+  uploadCoursePromoVideo,
+  uploadCourseContent,
+  getCourseStudents,
+  getStudentProgress,
+  createAssessment,
+  gradeAssessment,
+  getEarnings
+} from '../controllers/instructorController.js';
+
+const router = express.Router();
+
+// Protect all routes
+router.use(protect);
+router.use(authorize('instructor'));
+router.use(checkVerified);
+// router.use(checkApproved);
+
+// Profile routes
+router.route('/profile')
+  .get(getInstructorProfile)
+  .put(updateInstructorProfile);
+
+// Course routes
+router.route('/courses')
+  .get(getMyCourses)
+  .post(createCourse);
+
+router.route('/courses/:id')
+  .put(updateCourse);
+
+router.post('/courses/:id/thumbnail', uploadThumbnail, uploadCourseThumbnail);
+router.post('/courses/:id/promo-video', uploadPromoVideo, uploadCoursePromoVideo);
+router.post('/courses/:id/content', uploadContent, uploadCourseContent);
+
+// Student progress
+router.get('/courses/:courseId/students', getCourseStudents);
+router.get('/courses/:courseId/students/:studentId/progress', getStudentProgress);
+
+// Assessments
+router.post('/courses/:courseId/assessments', createAssessment);
+router.put('/assessments/:assessmentId/grade', gradeAssessment);
+
+// Earnings
+router.get('/earnings', getEarnings);
+
+export default router;

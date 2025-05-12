@@ -5,6 +5,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 // Import routes
 import authRoutes from './routes/authRoutes.js';
+import studentRoutes from './routes/studentRoutes.js';
+import instructorRoutes from './routes/instructorRoutes.js';
+import courseRoutes from './routes/courseRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -39,6 +42,9 @@ app.use(express.urlencoded({ extended: true })); // for form-data
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/students', studentRoutes);
+app.use('/api/v1/instructors', instructorRoutes);
+app.use('/api/v1/courses', courseRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

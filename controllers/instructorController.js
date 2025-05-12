@@ -1,0 +1,440 @@
+import Instructor from '../models/Instructor.js';
+import Course from '../models/Course.js';
+import Enrollment from '../models/Enrollment.js';
+import Progress from '../models/Progress.js';
+import Assessment from '../models/Assessment.js';
+import Content from '../models/Content.js';
+import mongoose from 'mongoose';
+import { cloudinary } from '../config/cloudinary.js';
+
+// Get instructor profile
+export const getInstructorProfile = async (req, res, next) => {
+  try {
+    const instructor = await Instructor.findById(req.user.id)
+      .select('-password -otp -otpExpires -resetPasswordToken -resetPasswordExpire')
+      
+
+    if (!instructor) {
+      return res.status(404).json({ success: false, message: 'Instructor not found' });
+    }
+
+    res.status(200).json({ success: true, data: instructor });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update instructor profile
+export const updateInstructorProfile = async (req, res, next) => {
+  try {
+    const { bio, expertise, socialLinks } = req.body;
+
+    const instructor = await Instructor.findByIdAndUpdate(
+      req.user.id,
+      { bio, expertise, socialLinks },
+      { new: true, runValidators: true }
+    ).select('-password -otp -otpExpires -resetPasswordToken -resetPasswordExpire');
+
+    res.status(200).json({ success: true, data: instructor });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get instructor's courses
+export const getMyCourses = async (req, res, next) => {
+  try {
+    const courses = await Course.find({ instructor: req.user.id })
+      .select('title subtitle thumbnail price discountPrice totalStudents rating status')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: courses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create a new course
+export const createCourse = async (req, res, next) => {
+  try {
+    const {
+      title,
+      subtitle,
+      description,
+      category,
+      subCategory,
+      language,
+      level,
+      duration,
+      price,
+      discountPrice,
+      prerequisites,
+      learningOutcomes
+    } = req.body;
+
+    const course = await Course.create({
+      title,
+      subtitle,
+      description,
+      instructor: req.user.id,
+      category,
+      subCategory,
+      language,
+      level,
+      duration,
+      price,
+      discountPrice,
+      prerequisites,
+      learningOutcomes,
+      status: 'draft'
+    });
+
+    // Update instructor's total courses
+    await Instructor.findByIdAndUpdate(req.user.id, {
+      $inc: { totalCourses: 1 }
+    });
+
+    res.status(201).json({ success: true, data: course });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update course
+export const updateCourse = async (req, res, next) => {
+  try {
+    const {
+      title,
+      subtitle,
+      description,
+      category,
+      subCategory,
+      language,
+      level,
+      duration,
+      price,
+      discountPrice,
+      prerequisites,
+      learningOutcomes,
+      curriculum,
+      status
+    } = req.body;
+
+    // Check if the course belongs to the instructor
+    const course = await Course.findOne({
+      _id: req.params.id,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Update course
+    const updatedCourse = await Course.findByIdAndUpdate(
+      req.params.id,
+      {
+        title,
+        subtitle,
+        description,
+        category,
+        subCategory,
+        language,
+        level,
+        duration,
+        price,
+        discountPrice,
+        prerequisites,
+        learningOutcomes,
+        curriculum,
+        status
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({ success: true, data: updatedCourse });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Upload course thumbnail
+export const uploadCourseThumbnail = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    }
+
+    const course = await Course.findOneAndUpdate(
+      { _id: req.params.id, instructor: req.user.id },
+      { thumbnail: req.file.path },
+      { new: true }
+    );
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    res.status(200).json({ success: true, data: course.thumbnail });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Upload course promo video
+export const uploadCoursePromoVideo = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    }
+
+    const course = await Course.findOneAndUpdate(
+      { _id: req.params.id, instructor: req.user.id },
+      { promotionalVideo: req.file.path },
+      { new: true }
+    );
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    res.status(200).json({ success: true, data: course.promotionalVideo });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Upload course content
+export const uploadCourseContent = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    }
+
+    const { sectionId, lectureId, title, description, type, isDownloadable } = req.body;
+
+    // Create content record
+    const content = await Content.create({
+      title: title || req.file.originalname,
+      description,
+      type,
+      url: req.file.path,
+      cloudinaryPublicId: req.file.filename,
+      fileSize: req.file.size,
+      fileFormat: req.file.mimetype,
+      isDownloadable,
+      createdBy: req.user.id,
+      course: req.params.id
+    });
+
+    // Find the course and update the curriculum
+    const course = await Course.findOne({
+      _id: req.params.id,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Find the section and lecture
+    const section = course.curriculum.id(sectionId);
+    if (!section) {
+      return res.status(404).json({ success: false, message: 'Section not found' });
+    }
+
+    const lecture = section.lectures.id(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ success: false, message: 'Lecture not found' });
+    }
+
+    // Update lecture content
+    lecture.content = content._id;
+    await course.save();
+
+    res.status(201).json({ success: true, data: content });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get course students
+export const getCourseStudents = async (req, res, next) => {
+  try {
+    // Check if the course belongs to the instructor
+    const course = await Course.findOne({
+      _id: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Fetch enrollments and populate student data
+    const enrollments = await Enrollment.find({ course: req.params.courseId })
+      .populate({
+        path: 'student',
+        select: 'firstName lastName email avatar',
+        model: 'User', // Fallback to User model
+        match: { role: 'student' } // Ensure only students are populated
+      })
+      .sort({ enrollmentDate: -1 });
+
+    res.status(200).json({ success: true, data: enrollments });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get student progress
+export const getStudentProgress = async (req, res, next) => {
+  try {
+    const progress = await Progress.findOne({
+      student: req.params.studentId,
+      course: req.params.courseId
+    }).populate('course', 'title curriculum');
+
+    if (!progress) {
+      return res.status(404).json({ success: false, message: 'Progress not found' });
+    }
+
+    res.status(200).json({ success: true, data: progress });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create assessment
+export const createAssessment = async (req, res, next) => {
+  try {
+    const { title, description, type, questions, passingScore, dueDate, timeLimit } = req.body;
+
+    // Check if course belongs to instructor
+    const course = await Course.findOne({
+      _id: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    const assessment = await Assessment.create({
+      title,
+      description,
+      course: req.params.courseId,
+      instructor: req.user.id,
+      type,
+      questions,
+      passingScore,
+      dueDate,
+      timeLimit
+    });
+
+    res.status(201).json({ success: true, data: assessment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Grade assessment
+export const gradeAssessment = async (req, res, next) => {
+  try {
+    const { studentId, score, feedback } = req.body;
+
+    // Validate input
+    if (!studentId || score === undefined) {
+      return res.status(400).json({ success: false, message: 'studentId and score are required' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid studentId' });
+    }
+
+    // Find the assessment
+    const assessment = await Assessment.findOne({
+      _id: req.params.assessmentId,
+      instructor: req.user.id
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found or not authorized' });
+    }
+
+    // Validate score
+    if (score < 0 || score > assessment.totalPoints) {
+      return res.status(400).json({ success: false, message: `Score must be between 0 and ${assessment.totalPoints}` });
+    }
+
+    // Find the student's progress
+    const progress = await Progress.findOne({
+      student: studentId,
+      course: assessment.course
+    });
+
+    if (!progress) {
+      return res.status(404).json({ success: false, message: 'Progress not found' });
+    }
+
+    // Find the assessmentProgress subdocument
+    const assessmentProgress = progress.assessmentProgress.find(
+      ap => ap.assessment.toString() === req.params.assessmentId
+    );
+
+    if (!assessmentProgress) {
+      return res.status(404).json({ success: false, message: 'Assessment submission not found' });
+    }
+
+    // Check if already graded
+    if (assessmentProgress.status === 'graded') {
+      return res.status(400).json({ success: false, message: 'Assessment already graded' });
+    }
+
+    // Update assessment progress
+    assessmentProgress.status = 'graded';
+    assessmentProgress.score = score;
+    assessmentProgress.gradingDate = Date.now();
+    assessmentProgress.gradedBy = req.user.id;
+    assessmentProgress.feedback = feedback;
+
+    await progress.save();
+
+    // Update overallProgress
+    const course = await Course.findById(assessment.course);
+    const totalLectures = course.curriculum.reduce((sum, section) => sum + section.lectures.length, 0);
+    const completedLectures = progress.curriculumProgress.filter(item => item.completed).length;
+    const lectureProgress = totalLectures ? (completedLectures / totalLectures) * 50 : 0; // 50% weight
+    const assessmentScoreContribution = assessment.totalPoints ? (score / assessment.totalPoints) * 50 : 0; // 50% weight
+    progress.overallProgress = Math.round(lectureProgress + assessmentScoreContribution);
+    await progress.save();
+
+    res.status(200).json({ success: true, data: progress });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get instructor earnings
+export const getEarnings = async (req, res, next) => {
+  try {
+    const instructor = await Instructor.findById(req.user.id).select('earnings');
+
+    if (!instructor) {
+      return res.status(404).json({ success: false, message: 'Instructor not found' });
+    }
+
+    // Get courses with earnings data
+    const courses = await Course.find({ instructor: req.user.id })
+      .select('title thumbnail totalStudents earnings');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalEarnings: instructor.earnings,
+        courses
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
