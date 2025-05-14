@@ -9,6 +9,7 @@ import {
   createCourseReview,
   getPopularCourses,
   getNewCourses,
+  deleteCourse,
   getRecommendedCourses
 } from '../controllers/courseController.js';
 import { protect } from '../middleware/auth.js';
@@ -25,6 +26,8 @@ router.get('/:id', getCourse);
 // Protected routes (require authentication)
 router.get('/:id/content', protect, getCourseContent); // Added protect middleware
 router.post('/:id/reviews', protect, createCourseReview);
+
+router.delete('/:id', protect, deleteCourse);
 
 router.get('/:id/reviews', getCourseReviews);
 

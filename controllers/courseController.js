@@ -363,3 +363,34 @@ export const getRecommendedCourses = async (req, res, next) => {
     next(error);
   }
 };
+
+// Delete course (Instructor only)
+export const deleteCourse = async (req, res, next) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    // Verify instructor owns the course
+    if (course.instructor.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this course'
+      });
+    }
+
+    await course.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Course deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
