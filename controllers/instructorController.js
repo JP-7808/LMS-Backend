@@ -338,6 +338,206 @@ export const createAssessment = async (req, res, next) => {
   }
 };
 
+
+// Get all assessments for a course
+export const getCourseAssessments = async (req, res, next) => {
+  try {
+    const course = await Course.findOne({
+      _id: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    const assessments = await Assessment.find({
+      course: req.params.courseId,
+      instructor: req.user.id
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: assessments.length,
+      data: assessments
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get single assessment
+export const getAssessment = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.assessmentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid assessment ID' });
+    }
+
+    const assessment = await Assessment.findOne({
+      _id: req.params.assessmentId,
+      course: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found or not authorized' });
+    }
+
+    res.status(200).json({ success: true, data: assessment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update assessment
+export const updateAssessment = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.assessmentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid assessment ID' });
+    }
+
+    const { title, description, type, questions, passingScore, dueDate, timeLimit, isPublished } = req.body;
+
+    const assessment = await Assessment.findOne({
+      _id: req.params.assessmentId,
+      course: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found or not authorized' });
+    }
+
+    // Calculate totalPoints from questions
+    let totalPoints = 0;
+    if (questions && Array.isArray(questions)) {
+      totalPoints = questions.reduce((sum, q) => sum + (q.points || 0), 0);
+    }
+
+    const updatedAssessment = await Assessment.findByIdAndUpdate(
+      req.params.assessmentId,
+      {
+        title,
+        description,
+        type,
+        questions,
+        totalPoints,
+        passingScore,
+        dueDate,
+        timeLimit,
+        isPublished
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({ success: true, data: updatedAssessment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete assessment
+export const deleteAssessment = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.assessmentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid assessment ID' });
+    }
+
+    const assessment = await Assessment.findOne({
+      _id: req.params.assessmentId,
+      course: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found or not authorized' });
+    }
+
+    // Remove assessment from Progress records
+    await Progress.updateMany(
+      { course: req.params.courseId },
+      { $pull: { assessmentProgress: { assessment: req.params.assessmentId } } }
+    );
+
+    // Delete the assessment
+    await Assessment.findByIdAndDelete(req.params.assessmentId);
+
+    res.status(200).json({ success: true, message: 'Assessment deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all submitted assessments for a course
+export const getSubmittedAssessments = async (req, res, next) => {
+  try {
+    // Validate course
+    const course = await Course.findOne({
+      _id: req.params.courseId,
+      instructor: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Find progress records with assessment submissions
+    const progressRecords = await Progress.find({
+      course: req.params.courseId,
+      assessmentProgress: { $ne: [] }
+    })
+      .populate({
+        path: 'student',
+        select: 'firstName lastName email avatar',
+        model: 'User',
+        match: { role: 'student' }
+      })
+      .populate({
+        path: 'assessmentProgress.assessment',
+        select: 'title type questions totalPoints passingScore dueDate timeLimit',
+        model: 'Assessment'
+      });
+
+    // Filter and format submissions
+    const submissions = [];
+    progressRecords.forEach(progress => {
+      progress.assessmentProgress.forEach(ap => {
+        if (['submitted', 'graded'].includes(ap.status) && ap.assessment) {
+          submissions.push({
+            assessmentId: ap.assessment._id,
+            assessmentTitle: ap.assessment.title,
+            assessmentType: ap.assessment.type,
+            totalPoints: ap.assessment.totalPoints,
+            dueDate: ap.assessment.dueDate,
+            student: {
+              id: progress.student._id,
+              firstName: progress.student.firstName,
+              lastName: progress.student.lastName,
+              email: progress.student.email
+            },
+            submission: {
+              status: ap.status,
+              score: ap.score,
+              answers: ap.answers,
+              submissionDate: ap.submissionDate,
+              gradingDate: ap.gradingDate,
+              feedback: ap.feedback
+            }
+          });
+        }
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      count: submissions.length,
+      data: submissions
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Grade assessment
 export const gradeAssessment = async (req, res, next) => {
   try {

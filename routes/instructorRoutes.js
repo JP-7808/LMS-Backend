@@ -13,6 +13,11 @@ import {
   getCourseStudents,
   getStudentProgress,
   createAssessment,
+  getCourseAssessments,
+  getAssessment,
+  updateAssessment,
+  deleteAssessment,
+  getSubmittedAssessments,
   gradeAssessment,
   getEarnings
 } from '../controllers/instructorController.js';
@@ -47,7 +52,17 @@ router.get('/courses/:courseId/students', getCourseStudents);
 router.get('/courses/:courseId/students/:studentId/progress', getStudentProgress);
 
 // Assessments
-router.post('/courses/:courseId/assessments', createAssessment);
+router.route('/courses/:courseId/assessments')
+  .get(getCourseAssessments)
+  .post(createAssessment);
+
+router.get('/courses/:courseId/assessments/submitted', getSubmittedAssessments);
+
+router.route('/courses/:courseId/assessments/:assessmentId')
+  .get(getAssessment)
+  .put(updateAssessment)
+  .delete(deleteAssessment);
+
 router.put('/assessments/:assessmentId/grade', gradeAssessment);
 
 // Earnings

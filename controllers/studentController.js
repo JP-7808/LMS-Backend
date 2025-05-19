@@ -362,6 +362,70 @@ export const completeLecture = async (req, res, next) => {
   }
 };
 
+// Get all assessments for a course
+export const getCourseAssessments = async (req, res, next) => {
+  try {
+    // Check if student is enrolled and active
+    const enrollment = await Enrollment.findOne({
+      student: req.user.id,
+      course: req.params.courseId,
+      status: 'active'
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ success: false, message: 'Not enrolled in course or enrollment not active' });
+    }
+
+    const assessments = await Assessment.find({
+      course: req.params.courseId,
+      isPublished: true
+    }).sort({ dueDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: assessments.length,
+      data: assessments
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get single assessment
+export const getAssessment = async (req, res, next) => {
+  try {
+    // Validate assessmentId
+    if (!mongoose.Types.ObjectId.isValid(req.params.assessmentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid assessment ID' });
+    }
+
+    // Check if student is enrolled and active
+    const enrollment = await Enrollment.findOne({
+      student: req.user.id,
+      course: req.params.courseId,
+      status: 'active'
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ success: false, message: 'Not enrolled in course or enrollment not active' });
+    }
+
+    const assessment = await Assessment.findOne({
+      _id: req.params.assessmentId,
+      course: req.params.courseId,
+      isPublished: true
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found or not published' });
+    }
+
+    res.status(200).json({ success: true, data: assessment });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Submit assessment
 export const submitAssessment = async (req, res, next) => {
   try {

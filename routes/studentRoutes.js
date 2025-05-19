@@ -8,6 +8,8 @@ import {
   getCourseProgress,
   updateProgress,
   completeLecture,
+  getCourseAssessments,
+  getAssessment,
   submitAssessment,
   getCertificates,
   getNotifications,
@@ -42,6 +44,14 @@ router.route('/courses/:courseId/progress')
 
   
 router.put('/courses/:courseId/lectures/:lectureId/complete', completeLecture);
+
+// Assessments
+router.route('/courses/:courseId/assessments')
+  .get(getCourseAssessments);
+
+router.route('/courses/:courseId/assessments/:assessmentId')
+  .get(getAssessment);
+
 router.post('/courses/:courseId/assessments/:assessmentId/submit', submitAssessment);
 
 // Certificates
