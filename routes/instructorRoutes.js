@@ -5,6 +5,7 @@ import {
   getInstructorProfile,
   updateInstructorProfile,
   getMyCourses,
+  getCourse,
   createCourse,
   updateCourse,
   uploadCourseThumbnail,
@@ -41,6 +42,7 @@ router.route('/courses')
   .post(createCourse);
 
 router.route('/courses/:id')
+  .get(getCourse)
   .put(updateCourse);
 
 router.post('/courses/:id/thumbnail', uploadThumbnail, uploadCourseThumbnail);

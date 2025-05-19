@@ -54,6 +54,32 @@ export const getMyCourses = async (req, res, next) => {
   }
 };
 
+// Get single course
+export const getCourse = async (req, res, next) => {
+  try {
+    // Validate courseId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid course ID' });
+    }
+
+    // Find the course
+    const course = await Course.findOne({
+      _id: req.params.id,
+      instructor: req.user.id
+    }).select(
+      'title subtitle description category subCategory language level duration price discountPrice prerequisites learningOutcomes curriculum thumbnail promotionalVideo totalStudents rating totalRatings status'
+    );
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    res.status(200).json({ success: true, data: course });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Create a new course
 export const createCourse = async (req, res, next) => {
   try {
