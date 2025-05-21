@@ -24,6 +24,49 @@ export const getStudentProfile = async (req, res, next) => {
   }
 };
 
+// Check Student Status
+export const checkStudentStatus = async (req, res, next) => {
+  try {
+
+    // If studentId is provided (admin checking another student), use it; otherwise, use the authenticated user's ID
+    const studentId = req.params.studentId || req.user.id;
+
+    // Ensure the user is either an admin or the student themselves
+    if (req.user.role !== 'admin' && req.user.id !== studentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to check this student’s status'
+      });
+    }
+
+    // Fetch the student
+    const student = await Student.findById(studentId).select('firstName lastName email isActive');
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Check if the student is active
+    const isActive = student.isActive;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: student._id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        email: student.email,
+        isActive: isActive,
+        statusMessage: isActive ? 'Student is active' : 'Student is inactive. Please contact an admin.'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Update student profile
 export const updateStudentProfile = async (req, res, next) => {
   try {

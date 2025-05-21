@@ -15,7 +15,8 @@ import {
   getNotifications,
   markNotificationAsRead,
   createSupportTicket,
-  getSupportTickets
+  getSupportTickets,
+  checkStudentStatus
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -30,6 +31,8 @@ router.use(checkVerified);
 router.route('/profile')
   .get(getStudentProfile)
   .put(updateStudentProfile);
+
+router.get('/profile/status', checkStudentStatus);
 
 // Course enrollment and progress
 router.route('/courses')
