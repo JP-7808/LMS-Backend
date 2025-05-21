@@ -20,7 +20,10 @@ import {
   exportProgressReport,
   getStudentProgress,
   // activateCourseForStudent,
-  getCoursesByInstructor
+  getCoursesByInstructor,
+  deleteInstructor,
+  StudentActiveStatus,
+  downloadSupportTicket
 } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { uploadThumbnail, uploadPromoVideo } from '../middleware/uploadMiddleware.js';
@@ -32,7 +35,9 @@ router.use(protect, authorize('admin'));
 
 // User Management Routes
 router.post('/users/instructors', enrollInstructor);
+router.delete('/users/instructors/:instructorId', deleteInstructor);
 router.post('/users/students', enrollStudent);
+router.patch('/users/students/:studentId/toggle-active', StudentActiveStatus);
 router.get('/users/instructors', getAllInstructors); // New
 router.get('/users/students', getAllStudents);      // New
 
@@ -73,6 +78,7 @@ router.get('/instructors/:instructorId/courses', getCoursesByInstructor);
 // Support Ticket Routes
 router.get('/tickets', getAllSupportTickets);
 router.patch('/tickets/:id/resolve', resolveSupportTicket);
+router.get('/tickets/:id/download', downloadSupportTicket);
 router.get('/tickets/metrics', getTicketMetrics);
 
 export default router;

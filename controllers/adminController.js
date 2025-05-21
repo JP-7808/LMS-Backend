@@ -45,6 +45,59 @@ export const enrollInstructor = async (req, res, next) => {
   }
 };
 
+// Delete an Instructor
+export const deleteInstructor = async (req, res, next) => {
+    try {
+      const { instructorId } = req.params;
+  
+      // Validate instructor ID
+      if (!mongoose.Types.ObjectId.isValid(instructorId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid instructor ID'
+        });
+      }
+  
+      // Check if instructor exists
+      const instructor = await Instructor.findById(instructorId);
+      if (!instructor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Instructor not found'
+        });
+      }
+  
+      // Find all courses by this instructor
+      const courses = await Course.find({ instructor: instructorId });
+  
+      // Get course IDs
+      const courseIds = courses.map(course => course._id);
+  
+      // Delete related enrollments
+      await Enrollment.deleteMany({ course: { $in: courseIds } });
+  
+      // Delete related payments
+      await Payment.deleteMany({ course: { $in: courseIds } });
+  
+      // Delete related progress
+      await Progress.deleteMany({ course: { $in: courseIds } });
+  
+      // Delete the courses
+      await Course.deleteMany({ instructor: instructorId });
+  
+      // Delete the instructor
+      await Instructor.findByIdAndDelete(instructorId);
+  
+      res.status(200).json({
+        success: true,
+        message: 'Instructor and all associated data deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting instructor:', error);
+      next(error);
+    }
+};
+
 // Enroll a Student (No OTP)
 export const enrollStudent = async (req, res, next) => {
   try {
@@ -81,6 +134,52 @@ export const enrollStudent = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+// Toggle Student Active Status (Admin)
+export const StudentActiveStatus = async (req, res, next) => {
+    try {
+      const { studentId } = req.params;
+      const { isActive } = req.body;
+  
+      // Validate student ID
+      if (!mongoose.Types.ObjectId.isValid(studentId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid student ID'
+        });
+      }
+  
+      // Validate isActive field
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'isActive must be a boolean value (true or false)'
+        });
+      }
+  
+      // Check if student exists
+      const student = await Student.findById(studentId);
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Student not found'
+        });
+      }
+  
+      // Update student's isActive status
+      student.isActive = isActive;
+      await student.save();
+  
+      res.status(200).json({
+        success: true,
+        message: `Student ${isActive ? 'activated' : 'deactivated'} successfully`,
+        data: { id: student._id, email: student.email, isActive: student.isActive }
+      });
+    } catch (error) {
+      console.error('Error toggling student active status:', error);
+      next(error);
+    }
 };
 
 // Get All Instructors
@@ -586,6 +685,46 @@ export const resolveSupportTicket = async (req, res, next) => {
         });
       }
       
+      next(error);
+    }
+};
+
+// Download Support Ticket Data
+export const downloadSupportTicket = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+  
+      // Validate ticket ID
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid ticket ID'
+        });
+      }
+  
+      // Fetch the ticket with populated fields
+      const ticket = await SupportTicket.findById(id)
+        .populate('user', 'firstName lastName email')
+        .populate('relatedCourse', 'title');
+  
+      if (!ticket) {
+        return res.status(404).json({
+          success: false,
+          message: 'Ticket not found'
+        });
+      }
+  
+      // Convert ticket data to JSON string
+      const ticketData = JSON.stringify(ticket, null, 2);
+  
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="support-ticket-${id}.json"`);
+  
+      // Send the JSON data as a downloadable file
+      res.send(ticketData);
+    } catch (error) {
+      console.error('Error downloading support ticket:', error);
       next(error);
     }
 };
