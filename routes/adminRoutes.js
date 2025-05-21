@@ -21,7 +21,7 @@ import {
   getStudentProgress,
   // activateCourseForStudent,
   getCoursesByInstructor,
-  deleteInstructor,
+  InstructorActiveStatus,
   StudentActiveStatus,
   downloadSupportTicket
 } from '../controllers/adminController.js';
@@ -35,7 +35,7 @@ router.use(protect, authorize('admin'));
 
 // User Management Routes
 router.post('/users/instructors', enrollInstructor);
-router.delete('/users/instructors/:instructorId', deleteInstructor);
+router.patch('/users/instructors/:instructorId/toggle-active', InstructorActiveStatus);
 router.post('/users/students', enrollStudent);
 router.patch('/users/students/:studentId/toggle-active', StudentActiveStatus);
 router.get('/users/instructors', getAllInstructors); // New

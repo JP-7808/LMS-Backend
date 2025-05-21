@@ -45,16 +45,26 @@ export const enrollInstructor = async (req, res, next) => {
   }
 };
 
-// Delete an Instructor
-export const deleteInstructor = async (req, res, next) => {
+
+// Toggle Instructor Active Status (Admin)
+export const InstructorActiveStatus = async (req, res, next) => {
     try {
       const { instructorId } = req.params;
+      const { isActive } = req.body;
   
       // Validate instructor ID
       if (!mongoose.Types.ObjectId.isValid(instructorId)) {
         return res.status(400).json({
           success: false,
           message: 'Invalid instructor ID'
+        });
+      }
+  
+      // Validate isActive field
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'isActive must be a boolean value (true or false)'
         });
       }
   
@@ -67,33 +77,17 @@ export const deleteInstructor = async (req, res, next) => {
         });
       }
   
-      // Find all courses by this instructor
-      const courses = await Course.find({ instructor: instructorId });
-  
-      // Get course IDs
-      const courseIds = courses.map(course => course._id);
-  
-      // Delete related enrollments
-      await Enrollment.deleteMany({ course: { $in: courseIds } });
-  
-      // Delete related payments
-      await Payment.deleteMany({ course: { $in: courseIds } });
-  
-      // Delete related progress
-      await Progress.deleteMany({ course: { $in: courseIds } });
-  
-      // Delete the courses
-      await Course.deleteMany({ instructor: instructorId });
-  
-      // Delete the instructor
-      await Instructor.findByIdAndDelete(instructorId);
+      // Update instructor's isActive status
+      instructor.isActive = isActive;
+      await instructor.save();
   
       res.status(200).json({
         success: true,
-        message: 'Instructor and all associated data deleted successfully'
+        message: `Instructor ${isActive ? 'activated' : 'deactivated'} successfully`,
+        data: { id: instructor._id, email: instructor.email, isActive: instructor.isActive }
       });
     } catch (error) {
-      console.error('Error deleting instructor:', error);
+      console.error('Error toggling instructor active status:', error);
       next(error);
     }
 };
