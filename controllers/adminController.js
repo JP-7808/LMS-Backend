@@ -342,26 +342,75 @@ export const approveCourse = async (req, res, next) => {
   }
 };
 
-// Get Enrollment Analytics
+// Get Detailed Enrollment Analytics
 export const getEnrollmentAnalytics = async (req, res, next) => {
-  try {
-    const enrollments = await Enrollment.aggregate([
-      { $group: { _id: '$course', totalEnrollments: { $sum: 1 } } },
-      {
-        $lookup: {
-          from: 'courses',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'course'
+    try {
+      const enrollments = await Enrollment.aggregate([
+        // Lookup to populate the student field (from User model)
+        {
+          $lookup: {
+            from: 'users', // Assuming Student inherits from User
+            localField: 'student',
+            foreignField: '_id',
+            as: 'studentDetails'
+          }
+        },
+        // Unwind the studentDetails array, but preserve records with no match
+        { $unwind: { path: '$studentDetails', preserveNullAndEmptyArrays: true } },
+        // Lookup to populate the course field
+        {
+          $lookup: {
+            from: 'courses',
+            localField: 'course',
+            foreignField: '_id',
+            as: 'courseDetails'
+          }
+        },
+        // Unwind the courseDetails array, but preserve records with no match
+        { $unwind: { path: '$courseDetails', preserveNullAndEmptyArrays: true } },
+        // Project the desired fields with fallbacks for missing data
+        {
+          $project: {
+            studentName: {
+              $cond: {
+                if: { $eq: ['$studentDetails', null] },
+                then: 'Unknown Student',
+                else: { $concat: ['$studentDetails.firstName', ' ', '$studentDetails.lastName'] }
+              }
+            },
+            studentId: { $ifNull: ['$studentDetails._id', 'N/A'] },
+            studentEmail: { $ifNull: ['$studentDetails.email', 'N/A'] },
+            courseTitle: { $ifNull: ['$courseDetails.title', 'Unknown Course'] },
+            courseId: { $ifNull: ['$courseDetails._id', 'N/A'] }
+          }
         }
-      },
-      { $unwind: '$course' },
-      { $project: { courseTitle: '$course.title', totalEnrollments: 1 } }
-    ]);
-    res.status(200).json({ success: true, data: enrollments });
-  } catch (error) {
-    next(error);
-  }
+      ]);
+  
+      res.status(200).json({
+        success: true,
+        data: enrollments
+      });
+    } catch (error) {
+      console.error('Error in getEnrollmentAnalytics:', error);
+      next(error);
+    }
+};
+
+// Get Total Enrollment Count
+export const getTotalEnrollments = async (req, res, next) => {
+    try {
+      const totalEnrollments = await Enrollment.countDocuments();
+  
+      res.status(200).json({
+        success: true,
+        data: {
+          totalEnrollments: totalEnrollments
+        }
+      });
+    } catch (error) {
+      console.error('Error in getTotalEnrollments:', error);
+      next(error);
+    }
 };
 
 // Get Revenue Analytics

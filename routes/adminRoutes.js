@@ -23,7 +23,8 @@ import {
   getCoursesByInstructor,
   InstructorActiveStatus,
   StudentActiveStatus,
-  downloadSupportTicket
+  downloadSupportTicket,
+  getTotalEnrollments
 } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { uploadThumbnail, uploadPromoVideo } from '../middleware/uploadMiddleware.js';
@@ -59,6 +60,7 @@ router.post('/courses/:id/promo-video', uploadPromoVideo, (req, res, next) => {
 
 // Analytics Routes
 router.get('/analytics/enrollments', getEnrollmentAnalytics);
+router.get('/analytics/total-enrollments', getTotalEnrollments);
 router.get('/analytics/revenue', getRevenueAnalytics);
 router.get('/analytics/skill-gap', getSkillGapAnalytics);
 router.get('/analytics/drop-out', getDropOutAnalytics);
