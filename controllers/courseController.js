@@ -181,6 +181,70 @@ export const filterCourses = async (req, res, next) => {
   }
 };
 
+// Search courses by category, language, and level
+export const searchCoursesByFilters = async (req, res, next) => {
+  try {
+    const { category, language, level, sort, page, limit } = req.query;
+    let query = { status: 'published' };
+
+    // Case-insensitive filtering
+    if (category) {
+      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+    }
+    if (language) {
+      query.language = { $regex: new RegExp(`^${language}$`, 'i') };
+    }
+    if (level) {
+      const validLevels = ['Beginner', 'Intermediate', 'Advanced'];
+      if (!validLevels.includes(level)) {
+        return res.status(400).json({ success: false, message: 'Level must be Beginner, Intermediate, or Advanced' });
+      }
+      query.level = { $regex: new RegExp(`^${level}$`, 'i') };
+    }
+
+    // Sorting with validation
+    let sortOption = '-createdAt';
+    if (sort) {
+      const sortFields = sort.split(',').map(field => field.trim());
+      const validSortFields = ['createdAt', 'rating', 'totalStudents', 'price'];
+      if (!sortFields.every(field => validSortFields.includes(field.replace(/^-/, '')))) {
+        return res.status(400).json({ success: false, message: 'Invalid sort field' });
+      }
+      sortOption = sortFields.join(' ');
+    }
+
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    if (pageNum < 1 || limitNum < 1) {
+      return res.status(400).json({ success: false, message: 'Page and limit must be positive' });
+    }
+    const skip = (pageNum - 1) * limitNum;
+
+    // Execute query
+    const courses = await Course.find(query)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limitNum)
+      .select('title subtitle thumbnail instructor price discountPrice rating totalStudents level language category')
+      .populate('instructor', 'firstName lastName avatar');
+
+    const totalCourses = await Course.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count: courses.length,
+      total: totalCourses,
+      page: pageNum,
+      pages: Math.ceil(totalCourses / limitNum),
+      data: courses,
+      message: courses.length === 0 ? 'No courses found matching the criteria' : undefined
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get course reviews
 export const getCourseReviews = async (req, res, next) => {
   try {

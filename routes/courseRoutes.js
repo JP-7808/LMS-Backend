@@ -10,7 +10,8 @@ import {
   getPopularCourses,
   getNewCourses,
   deleteCourse,
-  getRecommendedCourses
+  getRecommendedCourses,
+  searchCoursesByFilters
 } from '../controllers/courseController.js';
 import { protect } from '../middleware/auth.js';
 const router = express.Router();
@@ -19,6 +20,8 @@ const router = express.Router();
 router.get('/', getAllCourses);
 router.get('/search', searchCourses);
 router.get('/filter', filterCourses);
+// filter by catagory, language, type
+router.get('/search/filters', searchCoursesByFilters);
 router.get('/popular', getPopularCourses);
 router.get('/new', getNewCourses);
 router.get('/recommended', getRecommendedCourses);
