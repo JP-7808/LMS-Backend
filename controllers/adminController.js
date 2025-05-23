@@ -651,7 +651,7 @@ export const getCoursesByInstructor = async (req, res, next) => {
     }
 
     const courses = await Course.find({ instructor: instructorId })
-      .select('title description category level price duration language status createdAt')
+      .select('title subtitle description category subCategory level price discountPrice thumbnail promotionalVideo prerequisites curriculum totalStudents rating totalRatings status duration language status createdAt')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
