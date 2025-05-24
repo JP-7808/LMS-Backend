@@ -8,6 +8,7 @@ import SupportTicket from '../models/SupportTicket.js';
 import Assessment from '../models/Assessment.js';
 import Progress from '../models/Progress.js';
 import mongoose from 'mongoose';
+import PDFDocument from 'pdfkit';
 
 // Enroll an Instructor (No OTP)
 export const enrollInstructor = async (req, res, next) => {
@@ -734,42 +735,73 @@ export const resolveSupportTicket = async (req, res, next) => {
 
 // Download Support Ticket Data
 export const downloadSupportTicket = async (req, res, next) => {
-    try {
-      const { id } = req.params;
-  
-      // Validate ticket ID
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid ticket ID'
-        });
-      }
-  
-      // Fetch the ticket with populated fields
-      const ticket = await SupportTicket.findById(id)
-        .populate('user', 'firstName lastName email')
-        .populate('relatedCourse', 'title');
-  
-      if (!ticket) {
-        return res.status(404).json({
-          success: false,
-          message: 'Ticket not found'
-        });
-      }
-  
-      // Convert ticket data to JSON string
-      const ticketData = JSON.stringify(ticket, null, 2);
-  
-      // Set headers for file download
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="support-ticket-${id}.json"`);
-  
-      // Send the JSON data as a downloadable file
-      res.send(ticketData);
-    } catch (error) {
-      console.error('Error downloading support ticket:', error);
-      next(error);
+  try {
+    const { id } = req.params;
+
+    // Validate ticket ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ticket ID',
+      });
     }
+
+    // Fetch the ticket with populated fields
+    const ticket = await SupportTicket.findById(id)
+      .populate('user', 'firstName lastName email')
+      .populate('relatedCourse', 'title');
+
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ticket not found',
+      });
+    }
+
+    // Create a new PDF document
+    const doc = new PDFDocument();
+    const filename = `support-ticket-${id}.pdf`;
+
+    // Set response headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Pipe the PDF document to the response
+    doc.pipe(res);
+
+    // Add content to the PDF
+    doc.fontSize(20).text('Support Ticket Details', { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(14).text(`Ticket ID: ${ticket._id}`);
+    doc.text(`Status: ${ticket.status}`);
+    doc.text(`Priority: ${ticket.priority}`);
+    doc.text(`Created At: ${ticket.createdAt.toISOString()}`);
+    doc.moveDown();
+
+    // Add user information
+    doc.fontSize(16).text('User Information');
+    doc.fontSize(12).text(`Name: ${ticket.user.firstName} ${ticket.user.lastName}`);
+    doc.text(`Email: ${ticket.user.email}`);
+    doc.moveDown();
+
+    // Add course information (if available)
+    if (ticket.relatedCourse) {
+      doc.fontSize(16).text('Related Course');
+      doc.fontSize(12).text(`Title: ${ticket.relatedCourse.title}`);
+      doc.moveDown();
+    }
+
+    // Add ticket description
+    doc.fontSize(16).text('Description');
+    doc.fontSize(12).text(ticket.description || 'No description provided');
+
+    // Finalize the PDF and end the stream
+    doc.end();
+  } catch (error) {
+    console.error('Error downloading support ticket:', error);
+    next(error);
+  }
 };
 
 // Get Ticket Metrics
