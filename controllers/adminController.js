@@ -761,7 +761,7 @@ export const downloadSupportTicket = async (req, res, next) => {
       const ticketData = JSON.stringify(ticket, null, 2);
   
       // Set headers for file download
-      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="support-ticket-${id}.json"`);
   
       // Send the JSON data as a downloadable file
