@@ -278,18 +278,38 @@ export const createCourse = async (req, res, next) => {
 // Update a Course
 export const updateCourse = async (req, res, next) => {
   try {
-    const course = await Course.findById(req.params.id);
+    const { id } = req.params;
+
+    // Map the fields from req.body to the correct Course model fields
+    const updateData = { ...req.body };
+
+    // Handle thumbnail upload
+    if (req.body.url) {
+      updateData.thumbnail = req.body.url;
+      updateData.thumbnailCloudinaryPublicId = req.body.cloudinaryPublicId || null;
+      // Remove the temporary fields from updateData
+      delete updateData.url;
+      delete updateData.cloudinaryPublicId;
+    }
+
+    // Handle promo video upload
+    if (req.body.promoVideoUrl) {
+      updateData.promotionalVideo = req.body.promoVideoUrl;
+      updateData.promoVideoCloudinaryPublicId = req.body.promoVideoPublicId || null;
+      // Remove the temporary fields from updateData
+      delete updateData.promoVideoUrl;
+      delete updateData.promoVideoPublicId;
+    }
+
+    const course = await Course.findByIdAndUpdate(id, updateData, { new: true });
+
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-    const updates = { ...req.body };
-    if (req.body.url) updates.thumbnailUrl = req.body.url;
-    if (req.body.cloudinaryPublicId) updates.thumbnailPublicId = req.body.cloudinaryPublicId;
-    if (req.body.promoVideoUrl) updates.promoVideoUrl = req.body.promoVideoUrl;
-    if (req.body.promoVideoPublicId) updates.promoVideoPublicId = req.body.promoVideoPublicId;
-    const updatedCourse = await Course.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
-    res.status(200).json({ success: true, message: 'Course updated successfully', data: updatedCourse });
+
+    res.status(200).json({ success: true, data: course });
   } catch (error) {
+    console.error('Error in updateCourse:', error);
     next(error);
   }
 };
