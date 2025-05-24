@@ -361,7 +361,7 @@ export const updateDetails = async (req, res, next) => {
   
         // Delete old avatar if it exists
         const currentUser = await User.findById(req.user.id);
-        if (currentUser.avatar && currentUser.avatar !== 'default_avatar.jpg') {
+        if (currentUser.avatar && currentUser.avatar !== 'https://res.cloudinary.com/dcgilmdbm/image/upload/v1747893719/default_avatar_xpw8jv.jpg') {
           const publicId = currentUser.avatar.split('/').pop().split('.')[0];
           await deleteFile(`lms/avatars/${publicId}`);
         }
