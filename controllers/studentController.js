@@ -523,6 +523,72 @@ export const submitAssessment = async (req, res, next) => {
   }
 };
 
+// Get result of a specific submitted assessment
+export const getAssessmentResult = async (req, res, next) => {
+  try {
+    // Validate assessmentId
+    if (!mongoose.Types.ObjectId.isValid(req.params.assessmentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid assessment ID' });
+    }
+
+    // Check if student is enrolled and active
+    const enrollment = await Enrollment.findOne({
+      student: req.user.id,
+      course: req.params.courseId,
+      status: 'active'
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ success: false, message: 'Not enrolled in course or enrollment not active' });
+    }
+
+    // Find progress document
+    const progress = await Progress.findOne({
+      student: req.user.id,
+      course: req.params.courseId
+    })
+      .populate({
+        path: 'assessmentProgress.assessment',
+        select: 'title type totalPoints passingScore dueDate'
+      })
+      .select('assessmentProgress');
+
+    if (!progress) {
+      return res.status(404).json({ success: false, message: 'Progress not found' });
+    }
+
+    // Find the specific assessment progress
+    const assessmentProgress = progress.assessmentProgress.find(
+      entry => entry.assessment._id.toString() === req.params.assessmentId
+    );
+
+    if (!assessmentProgress) {
+      return res.status(404).json({ success: false, message: 'Assessment submission not found' });
+    }
+
+    // Check if the assessment is submitted or graded
+    if (assessmentProgress.status !== 'submitted' && assessmentProgress.status !== 'graded') {
+      return res.status(400).json({ success: false, message: 'Assessment has not been submitted' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        assessment: assessmentProgress.assessment,
+        status: assessmentProgress.status,
+        score: assessmentProgress.score,
+        totalPoints: assessmentProgress.totalPoints,
+        submissionDate: assessmentProgress.submissionDate,
+        gradingDate: assessmentProgress.gradingDate,
+        feedback: assessmentProgress.feedback,
+        gradedBy: assessmentProgress.gradedBy
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get certificates
 export const getCertificates = async (req, res, next) => {
   try {

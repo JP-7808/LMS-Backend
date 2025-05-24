@@ -16,7 +16,8 @@ import {
   markNotificationAsRead,
   createSupportTicket,
   getSupportTickets,
-  checkStudentStatus
+  checkStudentStatus,
+  getAssessmentResult
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -56,6 +57,9 @@ router.route('/courses/:courseId/assessments/:assessmentId')
   .get(getAssessment);
 
 router.post('/courses/:courseId/assessments/:assessmentId/submit', submitAssessment);
+
+// results Assessment
+router.get('/courses/:courseId/assessments/:assessmentId/result', getAssessmentResult);
 
 // Certificates
 router.get('/certificates', getCertificates);
