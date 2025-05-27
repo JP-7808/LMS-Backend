@@ -6,6 +6,7 @@ import Assessment from '../models/Assessment.js';
 import Certificate from '../models/Certificate.js';
 import Notification from '../models/Notification.js';
 import SupportTicket from '../models/SupportTicket.js';
+import Payment from '../models/Payment.js'
 import mongoose from 'mongoose';
 
 // Get student profile
@@ -87,7 +88,20 @@ export const updateStudentProfile = async (req, res, next) => {
 // Enroll in a course
 export const enrollInCourse = async (req, res, next) => {
   try {
-    const { courseId } = req.body;
+    const { courseId, paymentId } = req.body;
+
+    // Validate input
+    if (!courseId || !paymentId) {
+      return res.status(400).json({ success: false, message: 'courseId and paymentId are required' });
+    }
+
+    // Validate ObjectIds
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ success: false, message: 'Invalid courseId' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid paymentId' });
+    }
 
     // Check if course exists
     const course = await Course.findById(courseId);
@@ -95,50 +109,90 @@ export const enrollInCourse = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
+    // Check if payment exists and is completed
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment not found' });
+    }
+    if (payment.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'Payment is not completed' });
+    }
+    if (payment.student.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Payment does not belong to this user' });
+    }
+    if (payment.course.toString() !== courseId) {
+      return res.status(400).json({ success: false, message: 'Payment does not match the course' });
+    }
+
     // Check if already enrolled
     const existingEnrollment = await Enrollment.findOne({
       student: req.user.id,
       course: courseId
     });
-
     if (existingEnrollment) {
       return res.status(400).json({ success: false, message: 'Already enrolled in this course' });
     }
 
-    // Create enrollment
-    const enrollment = await Enrollment.create({
-      student: req.user.id,
-      course: courseId,
-      status: 'active'
-    });
+    // Start a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Create initial progress record
-    await Progress.create({
-      student: req.user.id,
-      course: courseId,
-      enrollment: enrollment._id,
-      curriculumProgress: [],
-      assessmentProgress: [],
-      overallProgress: 0
-    });
+    try {
+      // Create enrollment
+      const enrollment = await Enrollment.create([{
+        student: req.user.id,
+        course: courseId,
+        status: 'active',
+        payment: paymentId
+      }], { session });
 
-    // Update student's enrolled courses
-    await Student.findByIdAndUpdate(req.user.id, {
-      $push: {
-        enrolledCourses: {
-          course: courseId,
-          enrollmentDate: Date.now()
+      // Create initial progress record
+      await Progress.create([{
+        student: req.user.id,
+        course: courseId,
+        enrollment: enrollment[0]._id,
+        curriculumProgress: [],
+        assessmentProgress: [],
+        overallProgress: 0
+      }], { session });
+
+      // Update student's enrolled courses
+      await Student.findByIdAndUpdate(req.user.id, {
+        $push: {
+          enrolledCourses: {
+            course: courseId,
+            enrollmentDate: Date.now()
+          }
         }
-      }
-    });
+      }, { session });
 
-    // Update course's total students
-    await Course.findByIdAndUpdate(courseId, {
-      $inc: { totalStudents: 1 }
-    });
+      // Update course's total students
+      await Course.findByIdAndUpdate(courseId, {
+        $inc: { totalStudents: 1 }
+      }, { session });
 
-    res.status(201).json({ success: true, data: enrollment });
+      // Create notification
+      await Notification.create([{
+        user: req.user.id,
+        title: 'Course Enrollment',
+        message: `You have successfully enrolled in ${course.title}!`,
+        type: 'course',
+        relatedEntity: courseId,
+        relatedEntityModel: 'Course'
+      }], { session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(201).json({ success: true, data: enrollment[0] });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error('Transaction error in enrollInCourse:', error);
+      throw new Error(`Enrollment failed: ${error.message}`);
+    }
   } catch (error) {
+    console.error('Error in enrollInCourse:', error);
     next(error);
   }
 };

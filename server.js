@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import cors from "cors";
+import paymentRoutes from './routes/paymentRoutes.js'
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
@@ -50,6 +51,7 @@ app.use('/api/v1/instructors', instructorRoutes);
 app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/contacts', contactRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
