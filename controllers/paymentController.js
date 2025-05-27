@@ -196,3 +196,26 @@ export const getPaymentHistory = async (req, res, next) => {
     next(error);
   }
 };
+
+// Get Student's Own Payment History
+export const getStudentPaymentHistory = async (req, res, next) => {
+  try {
+    const payments = await Payment.find({ student: req.user.id })
+      .populate({
+        path: 'student',
+        select: 'firstName lastName email',
+        model: 'User'
+      })
+      .populate('course', 'title')
+      .sort({ paymentDate: -1 })
+      .select('student course amount currency paymentMethod transactionId status paymentDate invoiceNumber notes');
+
+    res.status(200).json({
+      success: true,
+      data: payments
+    });
+  } catch (error) {
+    console.error('Error fetching student payment history:', error);
+    next(error);
+  }
+};
