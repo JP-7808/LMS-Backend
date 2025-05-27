@@ -165,3 +165,34 @@ export const verifyPayment = async (req, res, next) => {
     next(error);
   }
 };
+
+// Get All Payment History (Admin)
+export const getPaymentHistory = async (req, res, next) => {
+  try {
+    // Check if user is an admin with manage_payments permission
+    if (!req.user || req.user.role !== 'admin' || !req.user.permissions.includes('manage_payments')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Admin with manage_payments permission required'
+      });
+    }
+
+    const payments = await Payment.find({})
+      .populate({
+        path: 'student',
+        select: 'firstName lastName email',
+        model: 'User' // Referencing the parent User model
+      })
+      .populate('course', 'title')
+      .sort({ paymentDate: -1 }) // Sort by payment date, most recent first
+      .select('student course amount currency paymentMethod transactionId status paymentDate invoiceNumber notes');
+
+    res.status(200).json({
+      success: true,
+      data: payments
+    });
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
+    next(error);
+  }
+};
