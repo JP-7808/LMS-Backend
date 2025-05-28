@@ -66,7 +66,7 @@ export const createOrder = async (req, res, next) => {
     }
 
     // Use discountPrice if available, otherwise use regular price
-    const amount = course.discountPrice || course.price;
+    const amount = course.price - course.discountPrice;
     if (!amount || amount <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid course price' });
     }
