@@ -52,15 +52,29 @@ export const protect = async (req, res, next) => {
   }
 };
 
-// Role-based authorization
-export const authorize = (...roles) => {
+// Role and permission-based authorization
+export const authorize = (roles = [], permissions = []) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    // Check if user has one of the required roles
+    if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: `User role ${req.user.role} is not authorized to access this route`
+        message: `User role ${req.user?.role || 'unknown'} is not authorized to access this route`
       });
     }
+
+    // If permissions are specified and user is an admin, check permissions
+    if (permissions.length > 0 && req.user.role === 'admin') {
+      const userPermissions = req.user.permissions || [];
+      const hasAllPermissions = permissions.every(perm => userPermissions.includes(perm));
+      if (!hasAllPermissions) {
+        return res.status(403).json({
+          success: false,
+          message: `User lacks required permissions: ${permissions.join(', ')}`
+        });
+      }
+    }
+
     next();
   };
 };
