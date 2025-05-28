@@ -68,7 +68,10 @@ export const getCourse = async (req, res, next) => {
       instructor: req.user.id
     }).select(
       'title subtitle description category subCategory language level duration price discountPrice prerequisites learningOutcomes curriculum thumbnail promotionalVideo totalStudents rating totalRatings status'
-    );
+    ).populate({
+        path: 'curriculum.lectures.content',
+        select: 'title description type url duration isDownloadable'
+      })
 
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
